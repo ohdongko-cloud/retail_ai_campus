@@ -84,7 +84,11 @@ export default function MeetingPage() {
   const fetchSlots = useCallback(async (monday: Date) => {
     setLoadingSlots(true);
     try {
-      const weekStr = monday.toISOString().split("T")[0];
+      // Use local date parts to avoid UTC-midnight shift (e.g. KST Mon 00:00 = UTC Sun 15:00)
+      const y = monday.getFullYear();
+      const m = String(monday.getMonth() + 1).padStart(2, "0");
+      const d = String(monday.getDate()).padStart(2, "0");
+      const weekStr = `${y}-${m}-${d}`;
       const res = await fetch(`/api/meetings/slots?week=${weekStr}`);
       if (!res.ok) throw new Error("Failed to fetch slots");
       const data: Slot[] = await res.json();
@@ -173,12 +177,16 @@ export default function MeetingPage() {
   }
 
   function getSlotDatetime(dayOffset: number, slotIndex: number): string {
-    const day = new Date(currentWeekMonday);
-    day.setDate(currentWeekMonday.getDate() + dayOffset);
+    // Build datetime in UTC to match server-side slot generation (server runs in UTC)
+    const y = currentWeekMonday.getFullYear();
+    const mo = String(currentWeekMonday.getMonth() + 1).padStart(2, "0");
+    const d = String(currentWeekMonday.getDate()).padStart(2, "0");
+    const utcBase = new Date(`${y}-${mo}-${d}T00:00:00.000Z`);
+    utcBase.setUTCDate(utcBase.getUTCDate() + dayOffset);
     const hours = 8 + Math.floor(slotIndex / 2);
     const minutes = (slotIndex % 2) * 30;
-    day.setHours(hours, minutes, 0, 0);
-    return day.toISOString();
+    utcBase.setUTCHours(hours, minutes, 0, 0);
+    return utcBase.toISOString();
   }
 
   const selectedDate = selectedSlot ? new Date(selectedSlot) : null;
