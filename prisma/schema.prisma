@@ -1,0 +1,214 @@
+// 사내 AI 교육 웹 플랫폼 - Prisma Schema
+// PRD 기반 데이터 모델 정의
+// 더 자세한 정보: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────────────────────
+// 사용자 (직원) 정보
+// 최초 접속 시 입력받은 정보. 모든 필드는 선택값.
+// ─────────────────────────────────────────────────────────────
+model User {
+  id           String   @id @default(cuid())
+  name         String?
+  organization String?
+  jobTitle     String?
+  email        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  events AnalyticsEvent[]
+
+  @@index([email])
+}
+
+// ─────────────────────────────────────────────────────────────
+// 강의 영상
+// 관리자가 등록한 YouTube 비공개 영상. 레벨별 분류.
+// ─────────────────────────────────────────────────────────────
+enum VideoLevel {
+  BASIC // 기초
+  INTERMEDIATE // 중급
+  ADVANCED // 고급
+  APPLIED // 응용
+}
+
+model Video {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  youtubeUrl  String
+  level       VideoLevel
+  thumbnail   String?
+  orderIndex  Int        @default(0)
+  isPublished Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  views VideoView[]
+
+  @@index([level])
+  @@index([orderIndex])
+}
+
+// 영상 시청 통계 (시청 횟수 및 체류시간)
+model VideoView {
+  id         String    @id @default(cuid())
+  videoId    String
+  userId     String?
+  sessionId  String?
+  watchedSec Int       @default(0) // 시청 시간(초)
+  startedAt  DateTime  @default(now())
+  endedAt    DateTime?
+
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@index([videoId])
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// 미팅 예약
+// 월~금, 08:00~17:00, 30분 단위. 30분~1시간 선택 가능.
+// ─────────────────────────────────────────────────────────────
+enum MeetingStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+  CANCELLED
+}
+
+model Meeting {
+  id            String        @id @default(cuid())
+  name          String // 신청자 이름
+  jobTitle      String // 직무/직급
+  currentWork   String // 현재 담당 업무 요약
+  requestDetail String // 필요한 서비스/문의 내용
+  email         String
+  phone         String
+  startAt       DateTime // 미팅 시작 시각
+  endAt         DateTime // 미팅 종료 시각 (30분 또는 1시간 후)
+  status        MeetingStatus @default(PENDING)
+  adminNote     String? // 관리자 메모
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([startAt])
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────────────────────
+// 익명 게시판 (문의사항)
+// ─────────────────────────────────────────────────────────────
+model Post {
+  id         String   @id @default(cuid())
+  nickname   String? // 닉네임 또는 익명
+  title      String
+  content    String   @db.Text
+  attachment String? // 파일 첨부 URL (선택)
+  viewCount  Int      @default(0)
+  likeCount  Int      @default(0)
+  isReported Boolean  @default(false)
+  isDeleted  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  comments Comment[]
+
+  @@index([createdAt])
+  @@index([isDeleted])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  nickname  String?
+  content   String   @db.Text
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// 내 서비스 공유 게시판
+// 직원이 만든 AI 서비스(챗봇, 자동화 스크립트 등) 공유
+// ─────────────────────────────────────────────────────────────
+model ServiceShare {
+  id          String   @id @default(cuid())
+  nickname    String?
+  title       String
+  description String   @db.Text
+  serviceUrl  String // 공유 서비스 링크
+  testAccount String? // 테스트 계정 정보 (선택)
+  isDeleted   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([createdAt])
+  @@index([isDeleted])
+}
+
+// ─────────────────────────────────────────────────────────────
+// 시스템 설정 (Key-Value)
+// 오픈채팅방 링크, 기타 환경 설정 저장
+// ─────────────────────────────────────────────────────────────
+model Setting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────
+// 관리자 계정
+// PRD에 명시된 ADMIN_DH
+// ─────────────────────────────────────────────────────────────
+model Admin {
+  id           String   @id @default(cuid())
+  username     String   @unique // 예: ADMIN_DH
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────
+// 사용자 행동 분석 이벤트
+// 메인 페이지 5개 버튼 클릭, 페이지 체류시간 등 수집
+// ─────────────────────────────────────────────────────────────
+enum EventType {
+  PAGE_VIEW
+  BUTTON_CLICK // 메인 페이지 버튼 클릭
+  VIDEO_OPEN
+  VIDEO_PROGRESS
+  MEETING_REQUEST
+  POST_CREATE
+  POST_VIEW
+  SERVICE_VIEW
+  CHATROOM_OPEN
+}
+
+model AnalyticsEvent {
+  id         String    @id @default(cuid())
+  userId     String?
+  sessionId  String?
+  type       EventType
+  target     String? // 버튼명, 영상 ID, 페이지 경로 등
+  durationMs Int? // 체류 시간 (ms)
+  metadata   Json? // 자유 형식 추가 데이터
+  createdAt  DateTime  @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([type])
+  @@index([createdAt])
+  @@index([userId])
+}
