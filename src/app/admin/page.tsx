@@ -1,23 +1,103 @@
-import Link from "next/link";
-import { buttonVariants } from "@/components/ui/button";
+"use client";
 
-export default function AdminPage() {
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
+export default function AdminLoginPage() {
+  const router = useRouter();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+
+    if (!username || !password) {
+      setError("아이디와 비밀번호를 입력해주세요.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "로그인에 실패했습니다.");
+        return;
+      }
+
+      toast.success("로그인 성공");
+      router.push("/admin/dashboard");
+    } catch {
+      setError("서버 오류가 발생했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <main className="container mx-auto py-12 px-4">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">관리자 대시보드</h1>
-          <p className="mt-2 text-muted-foreground">
-            영상·게시판·미팅 예약·통계를 관리합니다. (ADMIN_DH 로그인 필요)
-          </p>
-        </div>
-        <Link href="/" className={buttonVariants({ variant: "outline" })}>
-          홈으로
-        </Link>
-      </div>
-      <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
-        관리자 로그인 및 대시보드는 곧 제공됩니다.
-      </div>
+    <main className="min-h-screen flex items-center justify-center bg-background px-4">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl">관리자 로그인</CardTitle>
+          <CardDescription>
+            관리자 계정으로 로그인하세요
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="username">아이디</Label>
+              <Input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="ADMIN_DH"
+                autoComplete="username"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="password">비밀번호</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                autoComplete="current-password"
+                required
+              />
+            </div>
+            {error && (
+              <p className="text-sm text-destructive text-center">{error}</p>
+            )}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "로그인 중..." : "로그인"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </main>
   );
 }
