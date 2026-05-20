@@ -57,7 +57,8 @@ export async function GET(req: Request) {
         const slotDate = new Date(day);
         const hours = 8 + Math.floor(slot / 2);
         const minutes = (slot % 2) * 30;
-        slotDate.setHours(hours, minutes, 0, 0);
+        // Treat hours/minutes as KST (UTC+9): KST → UTC = KST - 9h
+        slotDate.setUTCHours(hours - 9, minutes, 0, 0);
 
         const isoStr = slotDate.toISOString();
         const isPast = slotDate <= now;

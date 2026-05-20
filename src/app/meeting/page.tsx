@@ -185,13 +185,15 @@ export default function MeetingPage() {
     utcBase.setUTCDate(utcBase.getUTCDate() + dayOffset);
     const hours = 8 + Math.floor(slotIndex / 2);
     const minutes = (slotIndex % 2) * 30;
-    utcBase.setUTCHours(hours, minutes, 0, 0);
+    // Treat hours/minutes as KST (UTC+9): KST → UTC = KST - 9h
+    utcBase.setUTCHours(hours - 9, minutes, 0, 0);
     return utcBase.toISOString();
   }
 
   const selectedDate = selectedSlot ? new Date(selectedSlot) : null;
   const selectedLabel = selectedDate
     ? selectedDate.toLocaleString("ko-KR", {
+        timeZone: "Asia/Seoul",
         month: "long",
         day: "numeric",
         weekday: "short",
