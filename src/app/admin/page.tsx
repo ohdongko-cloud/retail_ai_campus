@@ -21,11 +21,16 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
 
-    if (!username || !password) {
+    // Use FormData to capture autofilled values that React state may not reflect
+    const formData = new FormData(e.currentTarget);
+    const usernameVal = (formData.get("username") as string) || username;
+    const passwordVal = (formData.get("password") as string) || password;
+
+    if (!usernameVal || !passwordVal) {
       setError("아이디와 비밀번호를 입력해주세요.");
       return;
     }
@@ -35,7 +40,7 @@ export default function AdminLoginPage() {
       const res = await fetch("/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username: usernameVal, password: passwordVal }),
       });
 
       const data = await res.json();
@@ -69,6 +74,7 @@ export default function AdminLoginPage() {
               <Label htmlFor="username">아이디</Label>
               <Input
                 id="username"
+                name="username"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -81,6 +87,7 @@ export default function AdminLoginPage() {
               <Label htmlFor="password">비밀번호</Label>
               <Input
                 id="password"
+                name="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
