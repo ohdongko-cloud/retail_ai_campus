@@ -664,9 +664,9 @@ export default function MeetingPage() {
             {/* Row 3: textarea */}
             <div style={{ marginBottom: 16 }}>
               <FormField
-                label="문의 내용"
+                label="PRD 붙여넣기"
                 required
-                placeholder="미팅에서 논의하고 싶은 주제를 자세히 알려주세요"
+                placeholder="논의하고 싶은 내용이나 PRD를 그대로 붙여넣으세요"
                 value={form.requestDetail}
                 onChange={(v) => setForm({ ...form, requestDetail: v })}
                 rows={5}
